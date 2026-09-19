@@ -59,12 +59,13 @@ root/
 │   ├── BoundaryAudit.py     # per-group DLG certificate + ridge probes
 │   ├── Representations.py
 │   └── run_privacy_audits.py
-├── data                     # datasets, splits, stain reference, split generator
-│   ├── SMIDS
-│   ├── SIPaKMeD
-│   ├── splits
-│   ├── assets
-│   └── make_splits.py
+├── data                     # datasets are downloaded separately (see "Data preparation")
+│   ├── SMIDS/               #   unpack the 3 official class folders here
+│   ├── SIPaKMeD/            #   official images + Features_CELL; CSV built locally
+│   ├── splits/              # committed federated splits
+│   ├── assets/              # stain reference
+│   ├── make_splits.py       # regenerate the federated splits
+│   └── build_sipakmed_features.py  # official .dat -> morphology CSV
 ├── requirements.txt
 └── README.md
 ```
@@ -77,7 +78,55 @@ pip install -r requirements.txt
 
 Dependencies: torch >= 2.2, transformers >= 4.40, peft >= 0.10, numpy, pillow, opencv-python, scikit-image, scikit-learn, scipy.
 
-The DINOv3 ViT-B/16 weights are resolved from the repository root or the enclosing workspace root directory `dinov3-vitb16-pretrain-lvd1689m/`.
+## Data preparation
+
+Datasets are not redistributed here. Download them from the official sources and arrange them under `data/` as follows.
+
+### SMIDS (sperm)
+
+Source: Ilhan, Serbes and Aydin, *Automated sperm morphology analysis approach using a directional masking technique*, Computers in Biology and Medicine 122:103845, 2020. Download "Sperm Morphology Image Data Set (SMIDS)" from Mendeley Data: <https://data.mendeley.com/datasets/6xvdhc9fyb/1> (CC BY 4.0).
+
+The archive contains three class folders of `.bmp` images. Unpack them to:
+
+```
+data/SMIDS/
+├── Normal_Sperm/      # 1,021 images, e.g. "Normal_Sperm (1).bmp"
+├── Abnormal_Sperm/    # 1,005
+└── Non-Sperm/         #   974
+```
+
+`data/SMIDS/cache/` (head masks, part masks, per-image morphometric scalars) is created automatically on the first run by the client-side measurement pipeline phi in `utils/Morphology.py`; the first run is slower and later runs reuse the cache.
+
+### SIPaKMeD (cervical cells)
+
+Source: Plissiti et al., *SIPaKMeD: a new dataset for feature and image based classification of normal and pathological cervical cells in Pap smear images*, IEEE ICIP 2018. Download both the images and the cell-feature tables from the official page: <https://www.cs.uoi.gr/~marina/sipakmed.html>.
+
+Unpack the five class folders of the image archive under `images/`, keeping the `im_<Class>/CROPPED/` layout (the loader resolves `images/<Class>/im_<Class>/CROPPED/<image>_<cell>.bmp`), and place the feature-archive contents at the dataset root:
+
+```
+data/SIPaKMeD/
+├── images/
+│   ├── Dyskeratotic/im_Dyskeratotic/CROPPED/*.bmp
+│   ├── Koilocytotic/im_Koilocytotic/CROPPED/*.bmp
+│   ├── Metaplastic/im_Metaplastic/CROPPED/*.bmp
+│   ├── Parabasal/im_Parabasal/CROPPED/*.bmp
+│   └── Superficial-Intermediate/im_Superficial-Intermediate/CROPPED/*.bmp
+├── Features_CELL/                 # the 10 official nucleus/cytoplasm .dat tables
+└── Description_of_Features.pdf
+```
+
+Then build the unified 34-field per-cell morphology table from the official `.dat` files (standard library only):
+
+```
+python data/build_sipakmed_features.py
+```
+
+This writes `sipakmed_morphology_features.csv` (4,049 rows; 813/825/793/787/831 across the five classes) and the field schema; the CSV is required by `utils/Datasets.py`.
+
+### Splits and pretrained weights
+
+- The federated splits used in the paper are committed under `data/splits/`; regenerate them with `python data/make_splits.py`.
+- The DINOv3 ViT-B/16 weights are resolved from the repository root or the enclosing workspace root directory `dinov3-vitb16-pretrain-lvd1689m/`.
 
 ## Run code
 
@@ -128,12 +177,6 @@ Output artifacts (per run, under `--output-dir`):
 - `round_logs.json` / `round_metrics.csv` — per-round train/val/test metrics and timing;
 - `results.json` — summary payload (best round, test-at-best-val, server visibility, model selection metadata);
 - `checkpoint_best.pth` / `checkpoint_last.pth` — best-validation and final-round states (`global_state_dict` + `client_private_states`), loadable by the audit scripts.
-
-Generate the train/validation/test federated splits:
-
-```
-python data/make_splits.py
-```
 
 Run offline audits on a trained checkpoint:
 
