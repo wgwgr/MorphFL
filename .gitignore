@@ -1,0 +1,42 @@
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*.egg-info/
+.ipynb_checkpoints/
+
+# ---- Training / audit artifacts ----
+outputs/
+*.pth
+*.pt
+*.ckpt
+*.safetensors
+
+# ---- Datasets (download separately; see README.md) ----
+# SMIDS images and detector caches
+data/SMIDS/Normal_Sperm/
+data/SMIDS/Abnormal_Sperm/
+data/SMIDS/Non-Sperm/
+data/SMIDS/cache/
+# SIPaKMeD official distribution content
+data/SIPaKMeD/images/
+data/SIPaKMeD/Features_CELL/
+data/SIPaKMeD/_archives/
+data/SIPaKMeD/*.dat
+data/SIPaKMeD/*.csv
+data/SIPaKMeD/*.pdf
+# generic data binaries anywhere under data/
+data/**/*.npz
+data/**/*.npy
+data/**/*.bmp
+data/**/*.png
+data/**/*.jpg
+data/**/*.jpeg
+
+# pretrained backbone weights (resolved outside the repo; see README)
+dinov3-vitb16-pretrain-lvd1689m/
+
+# ---- OS / editor ----
+.DS_Store
+*.swp
+.vscode/
+.idea/
